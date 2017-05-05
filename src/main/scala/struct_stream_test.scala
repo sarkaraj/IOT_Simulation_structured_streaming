@@ -1,9 +1,9 @@
 package main.scala
 
 import org.apache.spark.SparkConf
-import org.apache.spark.ml.feature.StringIndexer
-import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.ml.classification.LogisticRegression
+import org.apache.spark.ml.feature.{LabeledPoint, StringIndexer}
+import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
 
@@ -22,6 +22,7 @@ object struct_stream_test {
     .config(conf)
     .config("spark.sql.warehouse.dir", "file:///c:/tmp/spark-warehouse")
     .getOrCreate()
+    import spark.implicits._
 
     val sc = spark.sparkContext
     sc.setLogLevel("ERROR")
@@ -36,7 +37,8 @@ object struct_stream_test {
       StructField(name = "pulse", dataType = FloatType),
       StructField(name = "temp", dataType = FloatType),
       StructField(name = "age", dataType = IntegerType),
-      StructField(name = "bp_category", dataType = StringType)
+      StructField(name = "bp_category", dataType = StringType),
+      StructField(name = "user_label", dataType = DoubleType)
     ))
 
     val staticInput = spark.read
@@ -51,24 +53,43 @@ object struct_stream_test {
     .fit(staticInput)
 
     val data_labelised = categorized_bp_cat_indexer.transform(staticInput)
-    .select("latitude", "longitude", "pulse", "temp", "age", "bp_category_label")
+    .select("latitude", "longitude", "pulse", "temp", "age", "bp_category_label", "user_label")
 
     data_labelised.show(10)
 
     data_labelised.printSchema()
 
-    val vectorised_data = data_labelised.rdd.map(row => {
-      val label = row.getAs[Double]("bp_category_label")
+    val Array(train_data, test_data) = data_labelised.randomSplit(Array(0.7, 0.3))
+
+    val vectorised_data = train_data.rdd.map(row => {
+      val label = row.getAs[Double]("user_label")
       val latitude = row.getDouble(0)
       val longitude = row.getDouble(1)
       val pulse = row.getFloat(2)
       val temp = row.getFloat(3)
       val age = row.getInt(4)
+      val bp_cat_label = row.getDouble(5)
 
-      LabeledPoint(label, Vectors.dense(latitude, longitude, pulse, temp, age))
+      LabeledPoint(label, Vectors.dense(latitude, longitude, pulse, temp, age, bp_cat_label))
     })
+    .toDF("label", "features")
 
-    vectorised_data.take(5).foreach(println)
+
+    vectorised_data.show(5)
+
+    val mlr = new LogisticRegression()
+    .setMaxIter(10)
+    .setRegParam(0.3)
+    .setElasticNetParam(0.8)
+    .setFamily("multinomial")
+
+
+    val mlrModel = mlr.fit(vectorised_data)
+
+    println(s"Multinomial coefficients: ${mlrModel.coefficientMatrix}")
+    println(s"Multinomial intercepts: ${mlrModel.interceptVector}")
+
+//    Fitting the model
 
 
 
