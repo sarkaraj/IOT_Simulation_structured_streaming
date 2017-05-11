@@ -1,4 +1,4 @@
-package src.main.scala
+package src.main.scala.classification
 
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel, RandomForestClassificationModel, RandomForestClassifier}
 import org.apache.spark.sql.DataFrame
@@ -6,7 +6,7 @@ import org.apache.spark.sql.DataFrame
 /**
   * Created by rajsarka on 5/11/2017.
   */
-object dataModeler {
+object dataModelerClassification {
   def obtainLogisticModel(vectorisedData : DataFrame) : Unit = {
 
     val mlr = new LogisticRegression()

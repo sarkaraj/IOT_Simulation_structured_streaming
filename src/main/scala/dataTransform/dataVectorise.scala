@@ -1,4 +1,4 @@
-package src.main.scala
+package src.main.scala.dataTransform
 
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.{StandardScaler, StringIndexer, VectorAssembler}
@@ -25,7 +25,19 @@ object dataVectorise {
     Schema
   }
 
-  def vectorizeData(userData : DataFrame) : DataFrame = {
+  def vectorizeUserLatLonData(userData : DataFrame) : DataFrame = {
+    val data = userData.select("latitude", "longitude")
+
+    val assembler_1 = new VectorAssembler()
+    .setInputCols(Array("latitude", "longitude"))
+    .setOutputCol("features")
+
+    val vector_data = assembler_1.transform(data)
+
+    vector_data.select("features")
+  }
+
+  def vectorizeUserBodyData(userData : DataFrame) : DataFrame = {
 
     val data = userData.select("pulse", "temp", "age", "bp_category", "label")
 
